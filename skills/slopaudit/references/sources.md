@@ -33,6 +33,23 @@ Measure per week so trends show:
 - skills loaded by the model, typed by the user, and never loaded;
 - permission denials by reason, and tool or network failures that recur.
 
+## Friction
+
+From full sessions with tool calls and results kept, top-level and subagent
+alike, per repository; eval and sandbox sessions stay excluded:
+
+- searches (search, list, and read calls) before the first read of a file the
+  session went on to change, counting sessions that changed nothing apart;
+  long searches with wrong turns show where a pointer is missing;
+- files read repeatedly in one session, and stable facts looked up again
+  across sessions;
+- docs, guides, and skills the agent read and then found wrong: a path,
+  command, or name that no longer exists, or the agent saying so;
+- tool output size by tool and MCP server: the largest calls, the totals, and
+  output truncated, fetched again, or rerun with a filter;
+- guesses, and questions to the user, that a log, file, or read-only service
+  could have answered.
+
 ## Forge
 
 Use the forge CLI for the user's own account and organizations and for their
