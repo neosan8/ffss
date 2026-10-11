@@ -1,6 +1,6 @@
 ---
 name: slopnanny
-description: "Resolve review feedback and CI on an open change request, merge when green unless asked to hold, then watch the runs the merge starts. Use for babysitting delivered work."
+description: "Resolve review feedback and CI on an open change request, merge when green unless asked to hold, then watch the runs the merge starts; also watch the runs a direct push or dispatched workflow starts. Use for babysitting delivered work."
 ---
 
 # Slopnanny
@@ -21,8 +21,10 @@ belongs to the required reviewer.
   `ready`; `checks-failed`, `activity`, `pushed`, `blocked`, or `closed`;
   `error` for a `gh` / `glab` failure; or `timeout` after 30 minutes. Act on
   what it prints, then rerun it with `-since` set to its `since:` line so
-  nothing between runs is missed. Without Go, poll `gh` / `glab` for the same
-  evidence and say prwatch didn't run.
+  nothing between runs is missed. Run it in the background where the harness
+  stops foreground commands sooner, one run per change request; for several,
+  start one each, never a loop over them. Without Go, poll `gh` / `glab` for
+  the same evidence and say prwatch didn't run.
 - A `CHANGES_REQUESTED` review may have no inline thread, and bots often post
   findings as top-level comments.
 - Green checks and no threads are not settled while a requested human
@@ -33,9 +35,10 @@ belongs to the required reviewer.
   push when it reviewed an earlier head of this change request. A bot that
   never touched this change request isn't pending, even if it reviews others;
   some run only for certain authors or accounts.
-- Wait for a pending bot at most 5 minutes, or to the user's deadline if
-  sooner, re-polling; then continue without it and name it in the receipt. A
-  usage-limit or quota notice means unavailable: say so and continue.
+- prwatch already waits up to 5 minutes for a pending bot (`-bot-wait`; lower
+  it to meet a sooner user deadline), then continues without it; name that
+  bot in the receipt. A usage-limit or quota notice means unavailable: say so
+  and continue.
 - Never summon a review bot with a mention, comment, or review request unless
   the user asks.
 - Don't reprocess findings a push answered; don't assume a push resolved older
@@ -100,15 +103,20 @@ started on the default branch.
   on the target branch and the ones they trigger, and prints each with its
   link and failed jobs: `runs-passed`, `no-runs`, `runs-failed`, or
   `timeout`.
-- Without prwatch, do the same by hand:
-  - Take the full merge SHA; an abbreviated one lists nothing. Read
+- A direct push or a dispatched workflow has no change request: run prwatch
+  with `-commit <full sha>` instead of a number. It watches that commit's runs
+  the same way, counting manual runs and only the latest run of each workflow.
+- Only without Go, do the same by hand:
+  - Take the full SHA; an abbreviated one lists nothing. For a push or
+    dispatch, that is the commit's (`git rev-parse`). After a merge, read
     `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or
     `merge_commit_sha`, then `squash_commit_sha`, from
     `glab mr view <number> -F json`. A fast-forward or indirect merge has
     neither; use the head commit that landed (`headRefOid` or `sha`).
-  - List the runs with `gh run list --commit <merge-sha> --limit 100` or
-    `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
-    can take a minute to appear; if none do, say so and stop.
+  - List the runs with `gh run list --commit <sha> --limit 100` or
+    `glab ci list --sha <sha>`, skipping scheduled runs. After a merge, skip
+    manual runs too; for a push or dispatch, keep only the latest run of each
+    workflow. Runs can take a minute to appear; if none do, say so and stop.
   - Wait once, re-polling, until they finish: at most 30 minutes unless the
     user set a deadline. Runs they trigger, such as a deploy after CI or a
     downstream pipeline, join the wait; re-list a minute after the last one
